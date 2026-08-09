@@ -3,24 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#16232B">
+<meta name="theme-color" content="#EDEBE6">
 <title>Río · Nivel y pronóstico</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #16232B;
-    --surface: #1F323C;
-    --surface-2: #24404C;
-    --text: #EFEAE0;
-    --text-muted: #8FA3AC;
-    --hairline: rgba(239,234,224,0.14);
-    --rise: #C97B4C;
-    --fall: #5FA8B8;
+    --bg: #EDEBE6;
+    --surface: #F4F2EE;
+    --text: #1C1C1E;
+    --text-muted: #96959A;
+    --hairline: rgba(28,28,30,0.09);
+    --rise: #E08858;
+    --fall: #8B96C9;
     --alert: #C1443B;
-    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --font-num: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+    --zone-low: #8B96C9;
+    --zone-normal: #C9C7C1;
+    --zone-alert: #E0A868;
+    --zone-evac: #C1443B;
+    --font-ui: "Nunito", -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
   }
   *{ box-sizing: border-box; }
   html,body{
@@ -37,100 +43,114 @@
   }
   .card{
     width: 100%;
-    max-width: 380px;
+    max-width: 360px;
     background: var(--surface);
-    border-radius: 20px;
-    padding: 18px 18px 22px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-  }
-  .topbar{
-    display:flex; align-items:center; justify-content:space-between;
-    margin-bottom: 14px;
-  }
-  .eyebrow{
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-muted);
+    border-radius: 16px;
+    padding: 12px 14px;
+    box-shadow: 0 8px 24px rgba(28,28,30,0.08);
   }
   select{
-    background: var(--surface-2);
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
     color: var(--text);
-    border: 1px solid var(--hairline);
-    border-radius: 10px;
-    padding: 7px 10px;
+    border: none;
+    padding: 0 18px 0 0;
     font-family: var(--font-ui);
-    font-size: 13px;
-    max-width: 62%;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+                       linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+    background-position: right 4px top 55%, right 0px top 55%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
   }
+  select:focus{ outline: none; }
   .body-row{
     display:flex;
-    gap: 16px;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 4px;
   }
   .staff-wrap{
-    flex: 0 0 26px;
+    flex: 0 0 16px;
+    align-self: stretch;
     position: relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
   }
   svg.staff{ display:block; }
   .main{
-    flex: 1;
+    flex: 1 1 auto;
     min-width: 0;
   }
-  .station-name{
-    font-size: 13px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin: 0 0 2px;
-  }
   .current{
-    font-family: var(--font-num);
-    font-size: 44px;
+    font-family: var(--font-ui);
+    font-weight: 500;
+    font-size: 40px;
     font-variant-numeric: tabular-nums;
-    line-height: 1.05;
+    line-height: 1;
     margin: 0;
+    letter-spacing: -0.01em;
   }
-  .current .unit{ font-size: 18px; color: var(--text-muted); margin-left: 4px; }
+  .current .unit{
+    font-family: var(--font-ui);
+    font-weight: 400;
+    font-size: 17px;
+    color: var(--text-muted);
+    margin-left: 3px;
+  }
   .updated{
-    font-size: 11.5px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.03em;
     color: var(--text-muted);
     margin-top: 4px;
+    text-transform: uppercase;
   }
-  .divider{
-    height: 1px;
-    background: var(--hairline);
-    margin: 16px 0 12px;
-  }
-  .forecast-row{
-    display:flex;
+  .forecasts{
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: auto auto;
+    column-gap: 6px;
+    row-gap: 4px;
     align-items: baseline;
-    justify-content: space-between;
-    padding: 7px 0;
-  }
-  .fc-label{
-    font-size: 13px;
-    color: var(--text-muted);
-    width: 52px;
+    justify-content: end;
+    padding-top: 2px;
   }
   .fc-delta{
-    font-family: var(--font-num);
-    font-size: 20px;
+    font-family: var(--font-ui);
+    font-weight: 500;
+    font-size: 23px;
     font-variant-numeric: tabular-nums;
-    font-weight: 600;
+    line-height: 1;
+    color: var(--text);
+    text-align: left;
   }
-  .fc-abs{
-    font-family: var(--font-num);
-    font-size: 12.5px;
+  .fc-unit{
+    font-family: var(--font-ui);
+    font-weight: 400;
+    font-size: 10px;
     color: var(--text-muted);
-    margin-left: 8px;
+    margin-left: 1px;
   }
-  .rise{ color: var(--rise); }
-  .fall{ color: var(--fall); }
+  .fc-days{
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-muted);
+    font-weight: 400;
+    text-align: left;
+    white-space: nowrap;
+  }
   .status{
-    margin-top: 14px;
-    font-size: 12px;
+    margin-top: 10px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
     color: var(--text-muted);
-    min-height: 16px;
+    min-height: 14px;
   }
   .status.err{ color: var(--alert); }
 </style>
@@ -138,30 +158,19 @@
 <body>
 
 <div class="card">
-  <div class="topbar">
-    <div class="eyebrow">Escala hidrométrica</div>
-    <select id="stationSelect" aria-label="Elegir estación"></select>
-  </div>
+  <select id="stationSelect" aria-label="Elegir estación"></select>
 
   <div class="body-row">
     <div class="staff-wrap">
-      <svg class="staff" id="staffSvg" width="26" height="150" viewBox="0 0 26 150"></svg>
+      <svg class="staff" id="staffSvg" width="16" height="86" viewBox="0 0 16 86"></svg>
     </div>
     <div class="main">
-      <p class="station-name" id="stationName">—</p>
       <p class="current" id="currentValue">—<span class="unit">m</span></p>
       <p class="updated" id="updatedAt"></p>
-
-      <div class="divider"></div>
-
-      <div class="forecast-row">
-        <span class="fc-label" id="fcLabel1">+? d</span>
-        <span><span class="fc-delta" id="fcDelta1">—</span><span class="fc-abs" id="fcAbs1"></span></span>
-      </div>
-      <div class="forecast-row">
-        <span class="fc-label" id="fcLabel2">+? d</span>
-        <span><span class="fc-delta" id="fcDelta2">—</span><span class="fc-abs" id="fcAbs2"></span></span>
-      </div>
+    </div>
+    <div class="forecasts">
+      <span class="fc-delta" id="fcDelta1">—</span><span class="fc-days" id="fcLabel1"></span>
+      <span class="fc-delta" id="fcDelta2">—</span><span class="fc-days" id="fcLabel2"></span>
     </div>
   </div>
 

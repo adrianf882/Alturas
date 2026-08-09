@@ -23,15 +23,12 @@ const STORAGE_KEY = "rio-widget-station";
 
 const els = {
   select: document.getElementById("stationSelect"),
-  stationName: document.getElementById("stationName"),
   currentValue: document.getElementById("currentValue"),
   updatedAt: document.getElementById("updatedAt"),
   fcLabel1: document.getElementById("fcLabel1"),
   fcDelta1: document.getElementById("fcDelta1"),
-  fcAbs1: document.getElementById("fcAbs1"),
   fcLabel2: document.getElementById("fcLabel2"),
   fcDelta2: document.getElementById("fcDelta2"),
-  fcAbs2: document.getElementById("fcAbs2"),
   status: document.getElementById("status"),
   staffSvg: document.getElementById("staffSvg"),
 };
@@ -122,74 +119,89 @@ async function fetchStationMeta(station) {
   return all.find(s => s.sitecode === station.siteCode) || {};
 }
 
-// ---- Render: escala hidrométrica (SVG) ---------------------------------------
+// ---- Render: escala hidrométrica (SVG, 4 zonas de color) ----------------------
 function renderStaff(current, meta) {
   const svg = els.staffSvg;
   svg.innerHTML = "";
-  const W = 26, H = 150, pad = 10;
+  const W = 16, H = 86, pad = 6;
+  const cx = W / 2;
   const lowRaw = meta && meta.nivel_de_aguas_bajas;
   const alertRaw = meta && meta.nivel_de_alerta;
   const evacRaw = meta && meta.nivel_de_evacuacion;
-
   const hasThresholds = [lowRaw, alertRaw, evacRaw].every(v => typeof v === "number");
 
   const ns = "http://www.w3.org/2000/svg";
-  const track = document.createElementNS(ns, "line");
-  track.setAttribute("x1", W / 2); track.setAttribute("x2", W / 2);
-  track.setAttribute("y1", pad); track.setAttribute("y2", H - pad);
-  track.setAttribute("stroke", "rgba(239,234,224,0.25)");
-  track.setAttribute("stroke-width", "3");
-  track.setAttribute("stroke-linecap", "round");
-  svg.appendChild(track);
+  const trackX0 = cx - 2, trackW = 4, trackH = H - 2 * pad;
+
+  // clip para que las 4 zonas queden con las puntas redondeadas del pill
+  const clipId = "staffClip";
+  const defs = document.createElementNS(ns, "defs");
+  const clipPath = document.createElementNS(ns, "clipPath");
+  clipPath.setAttribute("id", clipId);
+  const clipRect = document.createElementNS(ns, "rect");
+  clipRect.setAttribute("x", trackX0); clipRect.setAttribute("y", pad);
+  clipRect.setAttribute("width", trackW); clipRect.setAttribute("height", trackH);
+  clipRect.setAttribute("rx", 2);
+  clipPath.appendChild(clipRect);
+  defs.appendChild(clipPath);
+  svg.appendChild(defs);
 
   if (!hasThresholds || typeof current !== "number") {
-    return; // sin umbrales conocidos: solo se muestra la barra neutra
+    const track = document.createElementNS(ns, "rect");
+    track.setAttribute("x", trackX0); track.setAttribute("y", pad);
+    track.setAttribute("width", trackW); track.setAttribute("height", trackH);
+    track.setAttribute("rx", 2);
+    track.setAttribute("fill", "#C9C7C1");
+    svg.appendChild(track);
+    return;
   }
 
-  // escala: low -> abajo de todo, evac*1.15 -> arriba de todo (deja margen)
   const scaleMin = Math.min(lowRaw, current) - 0.3;
   const scaleMax = Math.max(evacRaw, current) + 0.3;
-  const y = (v) => H - pad - ((v - scaleMin) / (scaleMax - scaleMin)) * (H - 2 * pad);
+  const y = (v) => H - pad - ((v - scaleMin) / (scaleMax - scaleMin)) * trackH;
 
-  function band(v0, v1, color) {
-    const line = document.createElementNS(ns, "line");
-    line.setAttribute("x1", W / 2); line.setAttribute("x2", W / 2);
-    line.setAttribute("y1", y(v0)); line.setAttribute("y2", y(v1));
-    line.setAttribute("stroke", color);
-    line.setAttribute("stroke-width", "3");
-    line.setAttribute("stroke-linecap", "round");
-    svg.appendChild(line);
+  const g = document.createElementNS(ns, "g");
+  g.setAttribute("clip-path", `url(#${clipId})`);
+  svg.appendChild(g);
+
+  function zoneRect(vTop, vBottom, color) {
+    const yTop = y(vTop), yBottom = y(vBottom);
+    const rect = document.createElementNS(ns, "rect");
+    rect.setAttribute("x", trackX0);
+    rect.setAttribute("y", yTop);
+    rect.setAttribute("width", trackW);
+    rect.setAttribute("height", Math.max(0, yBottom - yTop));
+    rect.setAttribute("fill", color);
+    g.appendChild(rect);
   }
-  band(alertRaw, evacRaw, "rgba(193,68,59,0.65)");   // alerta -> evacuación
-  band(lowRaw, alertRaw, "rgba(95,168,184,0.35)");   // aguas bajas -> alerta
+  // de abajo hacia arriba: aguas bajas / normal / alerta / evacuación
+  zoneRect(lowRaw, scaleMin, "#8B96C9");
+  zoneRect(alertRaw, lowRaw, "#C9C7C1");
+  zoneRect(evacRaw, alertRaw, "#E0A868");
+  zoneRect(scaleMax, evacRaw, "#C1443B");
 
-  // marcador del valor actual
-  const dot = document.createElementNS(ns, "circle");
-  dot.setAttribute("cx", W / 2);
-  dot.setAttribute("cy", y(current));
-  dot.setAttribute("r", "5");
-  dot.setAttribute("fill", current >= alertRaw ? "#C1443B" : "#EFEAE0");
-  dot.setAttribute("stroke", "#16232B");
-  dot.setAttribute("stroke-width", "2");
-  svg.appendChild(dot);
+  // tick del valor actual
+  const tickY = y(current);
+  const tick = document.createElementNS(ns, "rect");
+  tick.setAttribute("x", cx - 5); tick.setAttribute("y", tickY - 1.5);
+  tick.setAttribute("width", 10); tick.setAttribute("height", 3);
+  tick.setAttribute("rx", 1.5);
+  tick.setAttribute("fill", "#1C1C1E");
+  svg.appendChild(tick);
 }
 
 // ---- Render principal ---------------------------------------------------------
-function renderForecastRow(labelEl, deltaEl, absEl, horizon, current) {
+function renderForecastRow(labelEl, deltaEl, horizon, current) {
   if (!horizon) {
-    labelEl.textContent = "—";
+    labelEl.textContent = "";
     deltaEl.textContent = "—";
-    deltaEl.className = "fc-delta";
-    absEl.textContent = "";
     return;
   }
   const days = daysBetween(new Date(), horizon.date);
   const delta = horizon.central - current;
   const sign = delta >= 0 ? "+" : "";
-  labelEl.textContent = `+${days} d`;
-  deltaEl.textContent = `${sign}${delta.toFixed(2)}`;
-  deltaEl.className = "fc-delta " + (delta >= 0 ? "rise" : "fall");
-  absEl.textContent = `(${horizon.central.toFixed(2)} m)`;
+  deltaEl.innerHTML = `${sign}${delta.toFixed(2)}<span class="fc-unit">m</span>`;
+  labelEl.textContent = `+${days}d`;
 }
 
 async function loadStation(station) {
@@ -207,8 +219,8 @@ async function loadStation(station) {
       current.date.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" }) +
       " " + current.date.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
 
-    renderForecastRow(els.fcLabel1, els.fcDelta1, els.fcAbs1, forecast[0], current.value);
-    renderForecastRow(els.fcLabel2, els.fcDelta2, els.fcAbs2, forecast[1], current.value);
+    renderForecastRow(els.fcLabel1, els.fcDelta1, forecast[0], current.value);
+    renderForecastRow(els.fcLabel2, els.fcDelta2, forecast[1], current.value);
 
     renderStaff(current.value, meta);
     setStatus("");
