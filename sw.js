@@ -1,7 +1,7 @@
 // Service worker mínimo: cachea el "shell" de la app (HTML/CSS/JS/íconos)
 // para que abra rápido e instale bien como PWA. Los datos de la API NUNCA
 // se cachean acá a propósito: siempre tienen que pedirse frescos a la red.
-const CACHE_NAME = "rio-widget-shell-v1";
+const CACHE_NAME = "rio-widget-shell-v2";
 const SHELL_FILES = [
   "./",
   "./index.html",
