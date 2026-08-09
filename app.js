@@ -206,7 +206,6 @@ function renderForecastRow(labelEl, deltaEl, horizon, current) {
 
 async function loadStation(station) {
   setStatus("Cargando…");
-  els.stationName.textContent = station.name;
   try {
     const [current, forecast, meta] = await Promise.all([
       fetchCurrent(station),
